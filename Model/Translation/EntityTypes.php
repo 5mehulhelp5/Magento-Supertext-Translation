@@ -117,13 +117,6 @@ final class EntityTypes
     /** "de_CH" or "de-ch" → "de-CH" */
     public static function formatTag(string $tag): string
     {
-        $parts = preg_split('/[-_]/', trim($tag)) ?: [];
-        $out   = [strtolower((string) array_shift($parts))];
-
-        foreach ($parts as $part) {
-            $out[] = \strlen($part) === 2 ? strtoupper($part) : ucfirst(strtolower($part));
-        }
-
-        return implode('-', array_filter($out, static fn (string $part): bool => $part !== ''));
+        return \Supertext\Translation\Api\LanguageCodes::format($tag);
     }
 }

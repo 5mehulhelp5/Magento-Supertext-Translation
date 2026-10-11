@@ -116,8 +116,8 @@ final class SupertextClient
 
     private function submit(string $html, string $targetLanguage, string $sourceLanguage, string $politeness): string
     {
-        $fields = ['target_lang' => $targetLanguage];
-        $source = strtolower((string) strtok($sourceLanguage, '-_'));
+        $fields = ['target_lang' => LanguageCodes::target($targetLanguage)];
+        $source = LanguageCodes::source($sourceLanguage);
 
         if ($source !== '') {
             // A full tag such as "en-GB" as source is rejected with INVALID_LANGUAGE_PAIR.

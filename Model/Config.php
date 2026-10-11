@@ -16,8 +16,8 @@ use Magento\Framework\Module\PackageInfo;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use Supertext\Translation\Api\CurlTransport;
+use Supertext\Translation\Api\LanguageCodes;
 use Supertext\Translation\Api\SupertextClient;
-use Supertext\Translation\Model\Translation\EntityTypes;
 
 /**
  * The module's settings (Stores → Configuration → Supertext → Translation), with the
@@ -105,18 +105,18 @@ class Config
             : (string) $this->scopeConfig->getValue('general/locale/code', ScopeInterface::SCOPE_STORE, $storeId);
     }
 
-    /** Sent to Supertext as target language: the override, else the locale as a tag ("de-CH"). */
+    /** Sent to Supertext as target language: the override, else the locale, always with a region ("de-CH"; a bare "de" → "de-DE"). */
     public function targetCode(int $storeId): string
     {
-        $override = trim((string) $this->scopeConfig->getValue(self::PATH_CODE, ScopeInterface::SCOPE_STORE, $storeId));
+        $override = (string) $this->scopeConfig->getValue(self::PATH_CODE, ScopeInterface::SCOPE_STORE, $storeId);
 
-        return $override !== '' ? $override : EntityTypes::formatTag($this->locale($storeId));
+        return LanguageCodes::target($this->locale($storeId), $override);
     }
 
-    /** Source language: the default locale's language ("en"). */
+    /** Source language: the default locale's language ("en_US" → "en"). */
     public function sourceCode(): string
     {
-        return EntityTypes::formatTag($this->locale(0));
+        return LanguageCodes::source($this->locale(0));
     }
 
     public function tone(int $storeId): string
@@ -133,7 +133,7 @@ class Config
      */
     public function storeViews(): array
     {
-        $source = strtolower(strtok(EntityTypes::formatTag($this->locale(0)), '-') ?: '');
+        $source = $this->sourceCode();
         $rows   = [];
 
         foreach ($this->storeManager->getStores(false) as $store) {
@@ -147,7 +147,7 @@ class Config
                 'locale'       => $this->locale($id),
                 'target'       => $target,
                 'active'       => (bool) $store->getIsActive(),
-                'sameLanguage' => strtolower(strtok($target, '-') ?: '') === $source,
+                'sameLanguage' => LanguageCodes::source($target) === $source,
             ];
         }
 

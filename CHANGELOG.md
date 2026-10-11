@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+- Fixed: a *Supertext language code* entered without a region (e.g. `de`) is now sent as `de-DE` (Supertext rejects target languages without a region), and codes like `de_ch` are normalized to `de-CH`.
 - Added: German, French and Italian admin interface. The module's screens and messages, including errors from Supertext, follow the admin user's interface locale (`i18n/` for de_DE, de_AT, de_CH, fr_FR, fr_BE, fr_CA, fr_CH, it_IT, it_CH).
 
 ## 0.1.0 — 2026-10-08

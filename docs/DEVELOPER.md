@@ -11,6 +11,7 @@ Magento 2 module `Supertext_Translation` (PHP 8.2+, Magento Open Source / Adobe 
 ├── Api/                                  no Magento classes (unit-tested on their own)
 │   ├── SupertextClient.php               Supertext AI file translation API v1
 │   ├── HtmlDocument.php                  fields ⇄ one HTML document with data-st-id elements
+│   ├── LanguageCodes.php                 language tags → Supertext source and target codes
 │   ├── CurlTransport.php                 HTTP via cURL (or streams), honours HTTPS_PROXY
 │   └── SupertextException.php
 ├── Model/
@@ -48,7 +49,7 @@ The translate page (`Block\Adminhtml\Translate` + `translate.phtml`) shows the i
 
 ### Languages
 
-The source is always the **default values** (store id 0), in the language of the default locale (`general/locale/code` at default scope; only the primary subtag is sent, e.g. `en`). Targets are the store views: `supertext/language/code` (store scope) if set, else the store view's `general/locale/code` as a tag (`de_CH` → `de-CH`). Store views whose language equals the source's are listed but not ticked, and the console command skips them without `--store`. Tone: `supertext/language/tone` (store scope).
+The source is always the **default values** (store id 0), in the language of the default locale (`general/locale/code` at default scope; only the language is sent, e.g. `en`). Targets are the store views: `supertext/language/code` (store scope) if set, else the store view's `general/locale/code` as a tag (`de_CH` → `de-CH`); see *Language codes*. Store views whose language equals the source's are listed but not ticked, and the console command skips them without `--store`. Tone: `supertext/language/tone` (store scope).
 
 ### What is translated
 
@@ -90,7 +91,7 @@ Every phrase goes through Magento's own mechanism: `__()` in PHP and templates (
 
 AI file translation API v1, same as the WordPress, PrestaShop and other Supertext plugins (`Api/SupertextClient.php`):
 
-1. `POST {base}/translate/ai/file` — multipart: `file` (`content.html`, part `Content-Type: text/html` exactly, or the API answers 415), `target_lang` (e.g. `de-CH`), `source_lang` (primary subtag only, e.g. `en`; a full tag is rejected with `INVALID_LANGUAGE_PAIR`), optional `politeness` (`more` formal, `less` informal). Answers `{"file_id": "…"}`.
+1. `POST {base}/translate/ai/file` — multipart: `file` (`content.html`, part `Content-Type: text/html` exactly, or the API answers 415), `target_lang` (e.g. `de-CH`), `source_lang` (bare language, e.g. `en`; see *Language codes*), optional `politeness` (`more` formal, `less` informal). Answers `{"file_id": "…"}`.
 2. `GET {base}/translate/ai/file/{id}/status` every 2 s until `done` (or `error`, `limit_exceeded`, `deleted`), up to the timeout (default 180 s).
 3. `GET {base}/translate/ai/file/{id}/translation` — the translated HTML.
 4. `DELETE {base}/translate/ai/file/{id}` — always, also after errors.
@@ -100,6 +101,16 @@ AI file translation API v1, same as the WordPress, PrestaShop and other Supertex
 - HTTP 429 (`RATE_LIMIT_EXCEEDED`, per second per key) is retried up to 4 times, after `Retry-After` or 1/2/4/8 s with jitter.
 - *Test connection* calls `GET {base}/features` (free).
 - Documents stay below 900,000 characters (API limit 1,000,000).
+
+### Language codes
+
+Supertext rejects a bare target (`de`) and a regional source (`en-GB`) with `INVALID_LANGUAGE_PAIR`. `Api/LanguageCodes.php` (unit-tested, no Magento classes) makes the codes:
+
+- **Source:** the bare language of the default locale: `en_US`, `en_GB` → `en`.
+- **Target:** the store view's *Supertext language code* if set, else its locale, normalized (`de_CH`, `de-ch` → `de-CH`; scripts and numeric regions keep their form: `zh-Hant`, `es-419`). Magento locales always have a region; a code entered without one gets a default: ar-SA, bg-BG, cs-CZ, da-DK, de-DE, el-GR, en-US, es-ES, et-EE, fi-FI, fr-FR, hr-HR, hu-HU, it-IT, ja-JP, ko-KR, lt-LT, lv-LV, nb-NO, nl-NL, pl-PL, pt-PT, ro-RO, ru-RU, sk-SK, sl-SI, sr-RS, sv-SE, th-TH, tr-TR, uk-UA, vi-VN, zh-CN (same table in every Supertext plugin). Unknown bare codes are sent unchanged, so Supertext's error names them.
+- Translating within one language (source `en`, target `en-GB`) is allowed.
+
+The stand-in (`tests/docs/stand-in.mjs`) rejects bare targets and regional sources like the live API.
 
 ## Local development
 

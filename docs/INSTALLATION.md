@@ -77,9 +77,9 @@ The default values are taken to be in the default locale (*Default Config* scope
 
 ### Language codes and tone
 
-By default the store view's locale (e.g. `de_CH` → `de-CH`) is sent to Supertext as the target language. In *Stores → Configuration → Supertext → Translation → Language*, with a store view chosen in the scope switcher, you can:
+By default the store view's locale (e.g. `de_CH` → `de-CH`) is sent to Supertext as the target language, and the default locale's language (e.g. `en_US` → `en`) as the source language. In *Stores → Configuration → Supertext → Translation → Language*, with a store view chosen in the scope switcher, you can:
 
-- send a **different code**, e.g. `fr-CH` for a store view whose locale is `fr_FR`, and
+- send a **different code**, e.g. `fr-CH` for a store view whose locale is `fr_FR` (a code without a region gets a regional default: `de` → `de-DE`, `en` → `en-US`, `fr` → `fr-FR`, …, because Supertext needs a region in the target language), and
 - choose the **tone**: *Formal (Sie, vous)*, *Informal (du, tu)* or the Supertext default (also settable for all store views or per website).
 
 <img src="images/module-language-store.png" alt="The Language group in the scope of the store view Deutsch (Schweiz): an empty Supertext language code field (Empty: the store view's locale) and Tone Supertext default, inherited from the website" width="720">
