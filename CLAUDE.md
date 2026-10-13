@@ -82,6 +82,7 @@ Lessons from the live API, apply them here: header `Authorization: Supertext-Aut
 
 ## This repo
 
+- Supertext calls go through the **Supertext SDK for PHP** (`Supertext\Sdk`), vendored in `lib/supertext-sdk/` from https://github.com/Supertext/Supertext-API-SDK-and-Guide and loaded by `registration.php`; reach it through `Api/Supertext.php` (`Config::client()`). Never edit the vendored files: fix the SDK upstream and run `tools/sync-supertext-sdk.sh <tag or commit>`. SDK errors become translatable messages in `Api\Supertext::error()` (one per SDK error code).
 - Before committing: PHP lint, `php phpunit.phar` (PHPUnit 10; the unit tests run without Magento, see `Test/bootstrap.php`), `./build.sh`. CI also runs PHPStan from a Mage-OS root (`docs/DEVELOPER.md` → *Code quality and security checks*), installs Mage-OS with MySQL and Elasticsearch and translates the demo content against the stand-in.
 - Test UI changes in a local Mage-OS with the module **copied** to `app/code/Supertext/Translation` (Magento refuses templates outside its root, so no symlink; see `docs/DEVELOPER.md` → Local development) and regenerate the screenshots they affect (`tests/docs/screenshots.mjs`).
 - New settings go in `etc/adminhtml/system.xml`, `etc/config.xml`, `Model/Config.php`, the German, French and Italian phrases in `i18n/{de_DE,fr_FR,it_IT}.csv` **and** the settings table in `docs/INSTALLATION.md`.

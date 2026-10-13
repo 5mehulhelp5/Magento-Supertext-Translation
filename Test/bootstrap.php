@@ -7,6 +7,9 @@
 
 declare(strict_types=1);
 
+// The vendored Supertext SDK, as registration.php loads it in Magento.
+require_once dirname(__DIR__) . '/lib/supertext-sdk/autoload.php';
+
 spl_autoload_register(static function (string $class): void {
     $prefix = 'Supertext\\Translation\\';
 

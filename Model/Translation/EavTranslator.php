@@ -27,7 +27,7 @@ use Magento\Framework\Indexer\IndexerRegistry;
 use Magento\Framework\Model\AbstractModel;
 use Magento\UrlRewrite\Model\UrlPersistInterface;
 use Psr\Log\LoggerInterface;
-use Supertext\Translation\Api\SupertextClient;
+use Supertext\Sdk\Client;
 use Supertext\Translation\Api\SupertextException;
 use Supertext\Translation\Model\Config;
 
@@ -93,9 +93,9 @@ class EavTranslator
     /**
      * @return array{status: string, title: string, translated: list<string>, kept: list<string>, notes: list<string>, targetId?: int}
      *
-     * @throws SupertextException on failure; the message is shown to the editor
+     * @throws SupertextException|\Supertext\Sdk\SupertextException on failure (Translator turns SDK errors into messages)
      */
-    public function translate(SupertextClient $client, string $type, int $id, int $storeId, bool $overwrite): array
+    public function translate(Client $client, string $type, int $id, int $storeId, bool $overwrite): array
     {
         $definition = EntityTypes::get($type);
         $fields     = $definition['fields'];
@@ -110,8 +110,8 @@ class EavTranslator
             return ['status' => 'unchanged', 'title' => $title, 'translated' => [], 'kept' => $planner->kept(), 'notes' => []];
         }
 
-        $values = $planner->apply($client->translateDocument(
-            $planner->document(),
+        $values = $planner->apply($client->translateTexts(
+            $planner->segments(),
             $this->config->targetCode($storeId),
             $this->config->sourceCode(),
             $this->config->tone($storeId),

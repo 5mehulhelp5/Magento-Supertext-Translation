@@ -8,17 +8,16 @@ Magento 2 module `Supertext_Translation` (PHP 8.2+, Magento Open Source / Adobe 
 
 ```
 ├── registration.php, composer.json (version), etc/module.xml
+├── lib/supertext-sdk/                    the Supertext SDK for PHP, vendored (don't edit; see *Supertext SDK*)
 ├── Api/                                  no Magento classes (unit-tested on their own)
-│   ├── SupertextClient.php               Supertext AI file translation API v1
-│   ├── HtmlDocument.php                  fields ⇄ one HTML document with data-st-id elements
-│   ├── LanguageCodes.php                 language tags → Supertext source and target codes
-│   ├── CurlTransport.php                 HTTP via cURL (or streams), honours HTTPS_PROXY
-│   └── SupertextException.php
+│   ├── Supertext.php                     the SDK client with the module's defaults, SDK errors → messages
+│   └── SupertextException.php            translatable message (English template, %1 parameters, detail)
 ├── Model/
 │   ├── Config.php                        settings, env variables, store views and their languages, version
 │   ├── Translation/
 │   │   ├── EntityTypes.php               what is translated: product, category, cms_page, cms_block
 │   │   ├── FieldPlanner.php              which fields to send, what to write back (no Magento classes)
+│   │   ├── Directives.php                protects {{…}} directives in rich text (no Magento classes)
 │   │   ├── EavTranslator.php             products, categories: store-view values, URL key, rewrites
 │   │   ├── CmsTranslator.php             pages, blocks: copies per store view + supertext_translation_link
 │   │   └── Translator.php                entry point for the admin and the console command
@@ -34,6 +33,7 @@ Magento 2 module `Supertext_Translation` (PHP 8.2+, Magento Open Source / Adobe 
 │   └── templates/                        translate.phtml (page + script), system/test-button.phtml
 ├── i18n/<locale>.csv                      German, French, Italian admin phrases (English is the source)
 ├── tools/sync-translations.php           writes the regional copies (de_CH, fr_CH, it_CH, …)
+├── tools/sync-supertext-sdk.sh           updates lib/supertext-sdk from the SDK repository
 └── Test/Unit/                            PHPUnit, runs without Magento (Test/bootstrap.php)
 ```
 
@@ -77,7 +77,7 @@ From `Model/Translation/EntityTypes.php` (keep `docs/USER_GUIDE.md` → *What is
 - Pages only: Magento allows one page per URL and store view (URL rewrites, `PageRepository` check), so the target store view is first removed from the original's stores (`[0]` becomes all other store views). If saving the copy fails, the original's stores are restored. Blocks don't need this: a store-view block wins over an *All Store Views* block with the same identifier.
 - Adobe Commerce's `row_id` (content staging) is handled when looking up copies; saving goes through the repositories.
 
-Each item × store view is one Supertext document: one `<div data-st-id="N">` per field, a whole rich-text field in one element. `HtmlDocument` wraps Magento directives in text (`{{widget …}}`, `{{config …}}`) in `<span translate="no" data-st-keep>` and removes the wrapper afterwards; directives in attributes (`src="{{media url=…}}"`) are not touched. The translated document is cut apart as text (tracking nested `<div>`s), not re-serialised through `DOMDocument`, which would URL-encode such attributes and rewrite Page Builder's attribute quoting.
+Each item × store view is one call to the SDK's `translateTexts()`: `FieldPlanner::segments()` gives one segment per field (plain text, or a whole rich-text field as one HTML segment), which the SDK packs into one document with a `<div data-st-id="N">` each. `Directives` wraps Magento directives in text (`{{widget …}}`, `{{config …}}`) in `<span translate="no" data-st-keep>` and `FieldPlanner::apply()` removes the wrapper afterwards; directives in attributes (`src="{{media url=…}}"`) are not touched. The SDK cuts the translated document apart as text, not re-serialised through `DOMDocument`, which would URL-encode such attributes and rewrite Page Builder's attribute quoting. If a field is missing from the translation, nothing is saved for that item (`incomplete_response`).
 
 ### Interface strings
 
@@ -86,10 +86,11 @@ Every phrase goes through Magento's own mechanism: `__()` in PHP and templates (
 - Edit `de_DE.csv`, `fr_FR.csv` and `it_IT.csv` by hand (formal address: Sie, vous, Lei; Magento's own terms: *Store View* / *vue magasin* / *visualizzazione negozio*, *Stores → Konfiguration*, *Magasins → Configuration*, *Negozi → Configurazione*; never translate "Supertext", placeholders, tags or URLs), then run `php tools/sync-translations.php` to write de_AT, de_CH (ß → ss), fr_BE, fr_CA, fr_CH and it_CH.
 - A new or changed phrase goes into all three files in the same commit. `Test/Unit/TranslationFilesTest.php` collects the phrases like `bin/magento i18n:collect-phrases` (`Test/ModuleStrings.php`) and fails if one is missing, unused, has different placeholders, or a regional copy is out of date.
 - `SupertextException` keeps its English template and `%1` parameters (`template()`, `parameters()`) apart from Supertext's own detail (`detail()`); `Run` and `Test` translate it with `__()`, so `Api/` and the models throw English and stay testable. The console command prints English.
+- Errors from the SDK (`Supertext\Sdk\SupertextException`, with an `errorCode`) are turned into a `SupertextException` by `Api\Supertext::error()`: one message per SDK error code, listed there as `['template', parameters]` so the phrase scanner finds them. `Translator` and the *Test connection* controller do this.
 
 ## Supertext API protocol
 
-AI file translation API v1, same as the WordPress, PrestaShop and other Supertext plugins (`Api/SupertextClient.php`):
+AI file translation API v1, same as the WordPress, PrestaShop and other Supertext plugins. The module doesn't implement it itself: the Supertext SDK does (see *Supertext SDK*). For reference:
 
 1. `POST {base}/translate/ai/file` — multipart: `file` (`content.html`, part `Content-Type: text/html` exactly, or the API answers 415), `target_lang` (e.g. `de-CH`), `source_lang` (bare language, e.g. `en`; see *Language codes*), optional `politeness` (`more` formal, `less` informal). Answers `{"file_id": "…"}`.
 2. `GET {base}/translate/ai/file/{id}/status` every 2 s until `done` (or `error`, `limit_exceeded`, `deleted`), up to the timeout (default 180 s).
@@ -100,15 +101,25 @@ AI file translation API v1, same as the WordPress, PrestaShop and other Supertex
 - Header `Authorization: Supertext-Auth-Key <key>` (the name must be `Authorization`). A pasted `Supertext-Auth-Key ` prefix is stripped, so exactly one is sent.
 - HTTP 429 (`RATE_LIMIT_EXCEEDED`, per second per key) is retried up to 4 times, after `Retry-After` or 1/2/4/8 s with jitter.
 - *Test connection* calls `GET {base}/features` (free).
-- Documents stay below 900,000 characters (API limit 1,000,000).
+- Documents stay below 900,000 characters (API limit 1,000,000); the SDK splits larger items into several documents.
+- The SDK identifies the module in the `User-Agent` (`supertext-sdk-php Magento-Supertext-Translation/<version>`) and keeps the key out of error messages.
+
+### Supertext SDK
+
+Supertext calls go through the [Supertext SDK for PHP](https://github.com/Supertext/Supertext-API-SDK-and-Guide/tree/main/sdk/php) (namespace `Supertext\Sdk`), shared by all Supertext integrations and tested against the same spec vectors and stand-in. It isn't on Packagist yet, so it is vendored in `lib/supertext-sdk/` (`VERSION.md` names the version and commit):
+
+- `registration.php` loads `lib/supertext-sdk/autoload.php`, so the SDK works for Composer and app/code installs alike; `./build.sh` puts `lib/` in the zip, `phpstan.neon` scans it without analysing it.
+- Reach it through `Api/Supertext.php` (`Supertext::client()`, `Config::client()`): it sets the base URL, the timeout and the `User-Agent`. Its built-in transport uses ext-curl, which Magento requires anyway; cURL honours `HTTPS_PROXY`.
+- Never edit the vendored files: fix the SDK upstream, then update with `tools/sync-supertext-sdk.sh <tag or commit>` and run the tests. Once the SDK is on Packagist, require `supertext/supertext-sdk` in `composer.json` instead (keeping the autoloader for app/code installs).
 
 ### Language codes
 
-Supertext rejects a bare target (`de`) and a regional source (`en-GB`) with `INVALID_LANGUAGE_PAIR`. `Api/LanguageCodes.php` (unit-tested, no Magento classes) makes the codes:
+Supertext rejects a bare target (`de`) and a regional source (`en-GB`) with `INVALID_LANGUAGE_PAIR`. `Config::sourceCode()` and `Config::targetCode()` make the codes with the SDK's `LanguageCodes`:
 
 - **Source:** the bare language of the default locale: `en_US`, `en_GB` → `en`.
-- **Target:** the store view's *Supertext language code* if set, else its locale, normalized (`de_CH`, `de-ch` → `de-CH`; scripts and numeric regions keep their form: `zh-Hant`, `es-419`). Magento locales always have a region; a code entered without one gets a default: ar-SA, bg-BG, cs-CZ, da-DK, de-DE, el-GR, en-US, es-ES, et-EE, fi-FI, fr-FR, hr-HR, hu-HU, it-IT, ja-JP, ko-KR, lt-LT, lv-LV, nb-NO, nl-NL, pl-PL, pt-PT, ro-RO, ru-RU, sk-SK, sl-SI, sr-RS, sv-SE, th-TH, tr-TR, uk-UA, vi-VN, zh-CN (same table in every Supertext plugin). Unknown bare codes are sent unchanged, so Supertext's error names them.
+- **Target:** the store view's *Supertext language code* if set, else its locale, normalized (`de_CH`, `de-ch` → `de-CH`; scripts and numeric regions keep their form: `zh-Hant`, `es-419`). Magento locales always have a region; a code entered without one gets the SDK's default: ar-SA, bg-BG, cs-CZ, da-DK, de-DE, el-GR, en-US, es-ES, et-EE, fi-FI, fr-FR, hr-HR, hu-HU, it-IT, ja-JP, ko-KR, lt-LT, lv-LV, nb-NO, nl-NL, pl-PL, pt-PT, ro-RO, ru-RU, sk-SK, sl-SI, sr-RS, sv-SE, th-TH, tr-TR, uk-UA, vi-VN, zh-CN (same table in every Supertext plugin). Unknown bare codes are sent unchanged, so Supertext's error names them.
 - Translating within one language (source `en`, target `en-GB`) is allowed.
+- If Supertext still rejects the pair, the editor sees "Supertext does not translate from "en" into "xx"" with a pointer to the store view's *Supertext language code*.
 
 The stand-in (`tests/docs/stand-in.mjs`) rejects bare targets and regional sources like the live API.
 
@@ -138,11 +149,11 @@ To translate without a Supertext key, run the stand-in API (`node tests/docs/sta
 ## Tests
 
 ```bash
-php phpunit.phar        # PHPUnit 10 (phar): API client, HTML document, field planner, i18n files — no Magento needed
+php phpunit.phar        # PHPUnit 10 (phar): SDK use and error messages, field planner, language codes, i18n files — no Magento needed
 ./build.sh              # dist/magento-supertext-translation-<version>.zip
 ```
 
-The module's `composer.json` requires `magento/*` packages, which aren't on Packagist, so the unit tests don't use `composer install`: `Test/bootstrap.php` autoloads the Magento-free classes.
+The module's `composer.json` requires `magento/*` packages, which aren't on Packagist, so the unit tests don't use `composer install`: `Test/bootstrap.php` autoloads the Magento-free classes and the vendored SDK. The protocol itself (multipart, polling, retries, packing) is tested in the SDK's repository.
 
 CI (`.github/workflows/ci.yml`):
 

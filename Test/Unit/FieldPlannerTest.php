@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Supertext\Translation\Test\Unit;
 
 use PHPUnit\Framework\TestCase;
+use Supertext\Sdk\HtmlDocument;
 use Supertext\Translation\Model\Translation\FieldPlanner;
 
 final class FieldPlannerTest extends TestCase
@@ -51,26 +52,56 @@ final class FieldPlannerTest extends TestCase
         self::assertFalse((new FieldPlanner(self::FIELDS, self::SOURCE, ['name' => "Praline\n box "], false))->isTranslated('name'));
     }
 
-    public function testDocumentAndApplyRoundTrip(): void
+    public function testSegmentsAndApplyRoundTrip(): void
     {
-        $planner = new FieldPlanner(self::FIELDS, self::SOURCE, [], false);
-        $html    = $planner->document();
+        $planner  = new FieldPlanner(self::FIELDS, self::SOURCE, [], false);
+        $segments = $planner->segments();
 
-        self::assertStringContainsString('<div data-st-id="0">Praline box</div>', $html);
-        self::assertStringContainsString('<div data-st-id="1"><p>Made in <strong>Bern</strong>.</p></div>', $html);
+        // One SDK segment per field, keyed by field; empty fields are not sent.
+        self::assertSame(['name', 'description', 'meta_title'], array_keys($segments));
+        self::assertFalse($segments['name']->html);
+        self::assertTrue($segments['description']->html);
+        self::assertSame('<p>Made in <strong>Bern</strong>.</p>', $segments['description']->text);
 
-        $translated = str_replace(
-            ['Praline box', 'Made in <strong>Bern</strong>.', '>Pralines<'],
-            ['Pralinenschachtel mit dunkler Schokolade', 'In <strong>Bern</strong> gemacht.', '>Pralinen<'],
-            $html,
-        );
-        $values = $planner->apply($translated);
+        $values = $planner->apply([
+            'name'        => 'Pralinenschachtel mit dunkler Schokolade',
+            'description' => "\n<p>In <strong>Bern</strong> gemacht.</p> ",
+            'meta_title'  => 'Pralinen',
+        ]);
 
         // Plain fields are cut to their size, rich text is not.
         self::assertSame('Pralinenschachtel mi', $values['name']);
         self::assertSame('<p>In <strong>Bern</strong> gemacht.</p>', $values['description']);
         self::assertSame('Pralinen', $values['meta_title']);
         self::assertArrayNotHasKey('available', $values);
+    }
+
+    public function testProtectsMagentoDirectivesInRichText(): void
+    {
+        $source  = '<p>See {{widget type="Magento\\Cms\\Block\\Widget\\Page\\Link" page_id="2"}} and <a href="{{store url=\'contact\'}}">us</a></p>';
+        $planner = new FieldPlanner(['description' => ['html' => true, 'size' => 0]], ['description' => $source], [], false);
+        $sent    = $planner->segments()['description']->text;
+
+        self::assertStringContainsString('<span translate="no" class="notranslate" data-st-keep="1">{{widget type="Magento\\Cms\\Block\\Widget\\Page\\Link" page_id="2"}}</span>', $sent);
+        self::assertStringContainsString('<a href="{{store url=\'contact\'}}">', $sent);
+        self::assertSame(['description' => $source], $planner->apply(['description' => $sent]));
+    }
+
+    public function testKeepsPageBuilderMarkupByteForByte(): void
+    {
+        $content = '<div data-content-type="row" data-appearance="contained" data-element="main">'
+            . '<div data-enable-parallax="0" data-background-images=\'{\"desktop_image\":\"{{media url=wysiwyg/bern.jpg}}\"}\' data-element="inner">'
+            . '<div data-content-type="text" data-element="main"><p>Made in <strong>Bern</strong>.</p></div>'
+            . '<figure><img src="{{media url=wysiwyg/box.jpg}}" alt="Praline box"></figure>'
+            . '</div></div>';
+        $planner = new FieldPlanner(['content' => ['html' => true, 'size' => 0]], ['content' => $content], [], false);
+        $segments = $planner->segments();
+
+        // Through the SDK's document packing and back, as Supertext returns it unchanged.
+        $list   = array_values($segments);
+        $parsed = HtmlDocument::parse(HtmlDocument::build($list), $list);
+
+        self::assertSame(['content' => $content], $planner->apply(['content' => (string) $parsed[0]]));
     }
 
     public function testSlugFollowsTheTitleOnlyWhileUntranslated(): void

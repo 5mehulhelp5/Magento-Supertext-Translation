@@ -10,14 +10,16 @@ declare(strict_types=1);
 
 namespace Supertext\Translation\Model\Translation;
 
-use Supertext\Translation\Api\SupertextClient;
+use Supertext\Sdk\Client;
+use Supertext\Sdk\SupertextException as SdkException;
+use Supertext\Translation\Api\Supertext;
 use Supertext\Translation\Api\SupertextException;
 use Supertext\Translation\Model\Config;
 
 /** One entry point for the translate page, its endpoint and the console command. */
 class Translator
 {
-    private ?SupertextClient $client = null;
+    private ?Client $client = null;
 
     public function __construct(
         private readonly Config $config,
@@ -63,7 +65,11 @@ class Translator
 
         $this->client ??= $this->config->client();
 
-        return $this->handler($type)->translate($this->client, $type, $id, $storeId, $overwrite);
+        try {
+            return $this->handler($type)->translate($this->client, $type, $id, $storeId, $overwrite);
+        } catch (SdkException $e) {
+            throw Supertext::error($e, $this->config->sourceCode(), $this->config->targetCode($storeId));
+        }
     }
 
     private function handler(string $type): EavTranslator|CmsTranslator

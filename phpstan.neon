@@ -13,3 +13,6 @@ parameters:
         - Controller
         - Model
         - registration.php
+    # The vendored Supertext SDK: known to PHPStan, but checked in its own repository.
+    scanDirectories:
+        - lib/supertext-sdk/src

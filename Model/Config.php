@@ -15,9 +15,9 @@ use Magento\Framework\Encryption\EncryptorInterface;
 use Magento\Framework\Module\PackageInfo;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
-use Supertext\Translation\Api\CurlTransport;
-use Supertext\Translation\Api\LanguageCodes;
-use Supertext\Translation\Api\SupertextClient;
+use Supertext\Sdk\Client;
+use Supertext\Sdk\LanguageCodes;
+use Supertext\Translation\Api\Supertext;
 
 /**
  * The module's settings (Stores → Configuration → Supertext → Translation), with the
@@ -34,8 +34,8 @@ class Config
     public const PATH_TONE        = 'supertext/language/tone';
     public const PATH_CMS_STATUS  = 'supertext/cms/status';
 
-    public const SIGNUP_URL  = 'https://www.supertext.com/person/en/account/signin';
-    public const API_KEY_URL = 'https://www.supertext.com/en/integrations/api';
+    public const SIGNUP_URL  = Supertext::SIGNUP_URL;
+    public const API_KEY_URL = Supertext::API_KEY_URL;
     public const REPOSITORY  = 'https://github.com/Supertext/Magento-Supertext-Translation';
 
     public function __construct(
@@ -51,12 +51,12 @@ class Config
         $env = (string) getenv('SUPERTEXT_API_KEY');
 
         if (trim($env) !== '') {
-            return SupertextClient::normalizeKey($env);
+            return Supertext::normalizeKey($env);
         }
 
         $stored = (string) $this->scopeConfig->getValue(self::PATH_API_KEY);
 
-        return SupertextClient::normalizeKey($stored === '' ? '' : (string) $this->encryptor->decrypt($stored));
+        return Supertext::normalizeKey($stored === '' ? '' : (string) $this->encryptor->decrypt($stored));
     }
 
     public function apiKeyFromEnvironment(): bool
@@ -73,7 +73,7 @@ class Config
     {
         $env = trim((string) getenv('SUPERTEXT_API_ENDPOINT'));
 
-        return SupertextClient::baseUrlFor(
+        return Supertext::baseUrlFor(
             (string) $this->scopeConfig->getValue(self::PATH_ENVIRONMENT),
             $env !== '' ? $env : (string) $this->scopeConfig->getValue(self::PATH_ENDPOINT),
         );
@@ -86,9 +86,10 @@ class Config
         return $value >= 30 ? min($value, 1800) : 180;
     }
 
-    public function client(): SupertextClient
+    /** A Supertext SDK client with the configured key, endpoint and timeout. */
+    public function client(): Client
     {
-        return new SupertextClient($this->apiKey(), $this->baseUrl(), new CurlTransport(), $this->timeout());
+        return Supertext::client($this->apiKey(), $this->baseUrl(), $this->timeout(), $this->version());
     }
 
     /** "same" (as the original) or "disabled" */
@@ -110,7 +111,7 @@ class Config
     {
         $override = (string) $this->scopeConfig->getValue(self::PATH_CODE, ScopeInterface::SCOPE_STORE, $storeId);
 
-        return LanguageCodes::target($this->locale($storeId), $override);
+        return LanguageCodes::target(trim($override) !== '' ? $override : $this->locale($storeId));
     }
 
     /** Source language: the default locale's language ("en_US" → "en"). */

@@ -21,7 +21,7 @@ use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\Model\AbstractModel;
 use Magento\Store\Model\StoreManagerInterface;
-use Supertext\Translation\Api\SupertextClient;
+use Supertext\Sdk\Client;
 use Supertext\Translation\Api\SupertextException;
 use Supertext\Translation\Model\Config;
 
@@ -99,9 +99,9 @@ class CmsTranslator
     /**
      * @return array{status: string, title: string, translated: list<string>, kept: list<string>, notes: list<string>, targetId?: int}
      *
-     * @throws SupertextException|LocalizedException on failure; the message is shown to the editor
+     * @throws SupertextException|\Supertext\Sdk\SupertextException|LocalizedException on failure (Translator turns SDK errors into messages)
      */
-    public function translate(SupertextClient $client, string $type, int $id, int $storeId, bool $overwrite): array
+    public function translate(Client $client, string $type, int $id, int $storeId, bool $overwrite): array
     {
         $fields = EntityTypes::get($type)['fields'];
         $source = $this->load($type, $id);
@@ -120,8 +120,8 @@ class CmsTranslator
             return ['status' => 'unchanged', 'title' => $title, 'translated' => [], 'kept' => $planner->kept(), 'notes' => []];
         }
 
-        $values = $planner->apply($client->translateDocument(
-            $planner->document(),
+        $values = $planner->apply($client->translateTexts(
+            $planner->segments(),
             $this->config->targetCode($storeId),
             $this->config->sourceCode(),
             $this->config->tone($storeId),

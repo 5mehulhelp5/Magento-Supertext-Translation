@@ -11,7 +11,7 @@ declare(strict_types=1);
 namespace Supertext\Translation\Model\Config\Backend;
 
 use Magento\Config\Model\Config\Backend\Encrypted;
-use Supertext\Translation\Api\SupertextClient;
+use Supertext\Translation\Api\Supertext;
 
 /** Stored encrypted; a pasted "Supertext-Auth-Key " prefix is removed. */
 class ApiKey extends Encrypted
@@ -21,7 +21,7 @@ class ApiKey extends Encrypted
         $value = (string) $this->getValue();
 
         if ($value !== '' && !preg_match('/^\*+$/', $value)) {
-            $this->setValue(SupertextClient::normalizeKey($value));
+            $this->setValue(Supertext::normalizeKey($value));
         }
 
         parent::beforeSave();

@@ -91,3 +91,5 @@ The table shows the reason for each item and store view that fails; the other on
 | *Too many requests to Supertext* | Wait a moment and click **Translate** again. Items already done show *Already translated, unchanged*. |
 | *Your Supertext translation limit is exceeded* | Your Supertext plan's volume is used up; tell your administrator. |
 | *Timed out waiting for the Supertext translation* | Very long texts. Try again, or ask your administrator to raise the timeout. |
+| *Supertext does not translate from "…" into "…"* | Supertext doesn't support that store view's language code; ask your administrator to set its *Supertext language code* (e.g. `de-CH`). |
+| *The Supertext translation came back incomplete* | Nothing was saved for that item and store view. Click **Translate** again. |

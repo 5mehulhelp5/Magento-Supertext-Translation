@@ -117,6 +117,6 @@ final class EntityTypes
     /** "de_CH" or "de-ch" → "de-CH" */
     public static function formatTag(string $tag): string
     {
-        return \Supertext\Translation\Api\LanguageCodes::format($tag);
+        return \Supertext\Sdk\LanguageCodes::normalize($tag);
     }
 }

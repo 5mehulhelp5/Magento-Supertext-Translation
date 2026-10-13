@@ -15,6 +15,8 @@ use Magento\Backend\App\Action\Context;
 use Magento\Framework\App\Action\HttpPostActionInterface;
 use Magento\Framework\Controller\Result\Json;
 use Magento\Framework\Controller\ResultFactory;
+use Supertext\Sdk\SupertextException as SdkException;
+use Supertext\Translation\Api\Supertext;
 use Supertext\Translation\Api\SupertextException;
 use Supertext\Translation\Model\Config;
 
@@ -39,7 +41,9 @@ class Test extends Action implements HttpPostActionInterface
 
         try {
             $this->config->client()->validateApiKey();
-        } catch (SupertextException $e) {
+        } catch (SdkException $e) {
+            $e = Supertext::error($e);
+
             return $json->setData(['ok' => false, 'message' => SupertextException::withDetail((string) __($e->template(), ...$e->parameters()), $e->detail())]);
         }
 

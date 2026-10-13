@@ -11,7 +11,7 @@ A ready-to-run container with Mage-OS 3.5 (Magento 2.4.9), English sample produc
 | | |
 | --- | --- |
 | Magento | Mage-OS 3.5 (Magento 2.4.9) tested; Magento Open Source and Adobe Commerce 2.4.7–2.4.9, Mage-OS 1.x–3.x supported, not yet tested |
-| PHP | Whatever your Magento version needs (8.2–8.5), with `ext-dom` and `ext-curl` (or `allow_url_fopen`) |
+| PHP | Whatever your Magento version needs (8.2–8.5), with `ext-curl` (Magento requires it too) |
 | Store setup | A store view per language, each with its locale (step 3) |
 | Supertext | An account with an API key, see [Get a Supertext account and API key](#get-a-supertext-account-and-api-key) |
 | Network | The web server must reach `https://api.supertext.com` over HTTPS |
@@ -136,7 +136,7 @@ Translations made so far stay in your shop: store-view values of products and ca
 | Message | Cause / fix |
 | --- | --- |
 | *Supertext is not set up yet* | No API key: enter it in the configuration (step 2), or set `SUPERTEXT_API_KEY`. |
-| *Authentication failed* | The key is wrong or revoked. Check it with **Test connection**; if needed, generate a new one at [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (Admin role required). |
+| *Authentication failed* | The key is wrong or revoked. Check it with **Test connection**. No Supertext account yet? [Create one at supertext.com](https://www.supertext.com/person/en/account/signin). Generate your API key at [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (requires the Admin role). |
 | *You are not allowed to edit this item* | The user's role lacks the resource for that kind of item (see *Who can translate*). |
 | *Your shop has only one store view* | Add a store view per language (step 3). Magento in single-store mode has nothing to translate into. |
 | *URL key "…" is already used in this store view* | Another product or category has that URL in the store view. The texts are translated, the URL key is kept; set one by hand. |
@@ -145,7 +145,9 @@ Translations made so far stay in your shop: store-view values of products and ca
 | *Too many requests to Supertext* | Supertext's per-second limit was still exceeded after 4 automatic retries. Wait a moment and translate again. |
 | *Your Supertext translation limit is exceeded* | Your Supertext plan's volume is used up. |
 | *Timed out waiting* | Very long content: raise the *Timeout* (and PHP's `max_execution_time`). |
-| *Could not reach Supertext* | The server can't make outbound HTTPS calls; check the firewall or proxy (`HTTPS_PROXY`). |
+| *Could not reach Supertext* | The server can't make outbound HTTPS calls; check the firewall or proxy (`HTTPS_PROXY`). The reason follows in brackets. |
+| *Supertext does not translate from "…" into "…"* | Supertext doesn't support the store view's language code. Set its *Supertext language code* with a region (e.g. `de-CH`, `fr-FR`) in store view scope (step 3). |
+| *The Supertext translation came back incomplete* | Supertext's answer lacked a field; nothing was saved for that item. Translate it again. |
 | No **Translate with Supertext** in the Actions menu or on the edit page | Module disabled, missing `setup:upgrade` / `setup:di:compile`, or the user's role lacks *Translate with Supertext*. Flush the cache. |
 
 Failed translations are logged to `var/log/system.log` (lines starting with `Supertext:`).

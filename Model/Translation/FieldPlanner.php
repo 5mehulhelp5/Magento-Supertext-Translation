@@ -10,11 +10,12 @@ declare(strict_types=1);
 
 namespace Supertext\Translation\Model\Translation;
 
-use Supertext\Translation\Api\HtmlDocument;
+use Supertext\Sdk\Segment;
 
 /**
  * Decides which fields of one item go to Supertext and what is written back.
  * No Magento dependencies, so the rules are unit-tested on their own.
+ * The texts go to Supertext as Supertext SDK segments, one per field.
  *
  * A target field counts as *already translated* when it has text that differs from the
  * source. A store view without its own value shows the default value, so a
@@ -91,37 +92,38 @@ final class FieldPlanner
         return trim($target) !== '' && self::normalize($target) !== self::normalize((string) ($this->source[$field] ?? ''));
     }
 
-    /** The document to send: one data-st-id element per field. */
-    public function document(): string
+    /**
+     * The texts to send: field => segment, rich text as HTML with its Magento directives protected.
+     *
+     * @return array<string, Segment>
+     */
+    public function segments(): array
     {
         $segments = [];
 
-        foreach ($this->toTranslate() as $i => $field) {
-            $segments[$i] = ['text' => (string) $this->source[$field], 'html' => $this->fields[$field]['html']];
+        foreach ($this->toTranslate() as $field) {
+            $text             = (string) $this->source[$field];
+            $segments[$field] = $this->fields[$field]['html'] ? Segment::html(Directives::protect($text)) : Segment::text($text);
         }
 
-        return HtmlDocument::build($segments);
+        return $segments;
     }
 
     /**
-     * Maps the translated document back to field values, trimmed to each field's size.
+     * The translated texts as field values, trimmed to each field's size.
      *
-     * @return array<string, string> field => translated text
+     * @param array<string, string> $translated field => translated text, as returned for segments()
+     *
+     * @return array<string, string> field => value to save
      */
-    public function apply(string $translatedHtml): array
+    public function apply(array $translated): array
     {
-        $send   = $this->toTranslate();
-        $isHtml = [];
-
-        foreach ($send as $i => $field) {
-            $isHtml[$i] = $this->fields[$field]['html'];
-        }
-
-        $parsed = HtmlDocument::parse($translatedHtml, $isHtml);
         $values = [];
 
-        foreach ($send as $i => $field) {
-            $text = $parsed[$i] ?? '';
+        foreach ($this->toTranslate() as $field) {
+            $html = $this->fields[$field]['html'];
+            $text = (string) ($translated[$field] ?? '');
+            $text = $html ? trim(Directives::unprotect($text)) : $text;
 
             if (trim($text) === '') {
                 continue;
@@ -129,7 +131,7 @@ final class FieldPlanner
 
             $size = $this->fields[$field]['size'];
 
-            if (!$this->fields[$field]['html'] && $size > 0 && mb_strlen($text) > $size) {
+            if (!$html && $size > 0 && mb_strlen($text) > $size) {
                 $text = rtrim(mb_substr($text, 0, $size));
             }
 
