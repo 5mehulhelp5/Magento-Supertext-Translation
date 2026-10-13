@@ -7,6 +7,8 @@ All notable changes to this project are documented here.
 - Changed: Supertext calls now go through the [Supertext SDK for PHP](https://github.com/Supertext/Supertext-API-SDK-and-Guide), bundled with the module (`lib/supertext-sdk/`); the module's own API client is gone. No change to settings or installation; requires ext-curl, as Magento does.
 - Changed: clearer messages when Supertext rejects a store view's language ("Supertext does not translate from "en" into "xx"" with a pointer to the *Supertext language code*), when its answer is incomplete (nothing is saved for that item), and *Authentication failed* now also links to the Supertext sign-up page, in all four interface languages.
 - Fixed: a *Supertext language code* entered without a region (e.g. `de`) is now sent as `de-DE` (Supertext rejects target languages without a region), and codes like `de_ch` are normalized to `de-CH`.
+- Fixed: a target language Supertext doesn't know is now reported as an unsupported language ("Supertext does not translate from … into …"), not as "resource not found".
+- Fixed: a *Supertext language code* with a variant (e.g. `de_DE_formal`) is sent to Supertext as `de-DE`.
 - Added: German, French and Italian admin interface. The module's screens and messages, including errors from Supertext, follow the admin user's interface locale (`i18n/` for de_DE, de_AT, de_CH, fr_FR, fr_BE, fr_CA, fr_CH, it_IT, it_CH).
 
 ## 0.1.0 — 2026-10-08

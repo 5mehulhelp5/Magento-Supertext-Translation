@@ -32,8 +32,8 @@ Magento 2 module `Supertext_Translation` (PHP 8.2+, Magento Open Source / Adobe 
 │   ├── layout/supertext_translate_index.xml
 │   └── templates/                        translate.phtml (page + script), system/test-button.phtml
 ├── i18n/<locale>.csv                      German, French, Italian admin phrases (English is the source)
+├── scripts/vendor-sdk.sh                 updates lib/supertext-sdk from the SDK repository
 ├── tools/sync-translations.php           writes the regional copies (de_CH, fr_CH, it_CH, …)
-├── tools/sync-supertext-sdk.sh           updates lib/supertext-sdk from the SDK repository
 └── Test/Unit/                            PHPUnit, runs without Magento (Test/bootstrap.php)
 ```
 
@@ -106,11 +106,11 @@ AI file translation API v1, same as the WordPress, PrestaShop and other Supertex
 
 ### Supertext SDK
 
-Supertext calls go through the [Supertext SDK for PHP](https://github.com/Supertext/Supertext-API-SDK-and-Guide/tree/main/sdk/php) (namespace `Supertext\Sdk`), shared by all Supertext integrations and tested against the same spec vectors and stand-in. It isn't on Packagist yet, so it is vendored in `lib/supertext-sdk/` (`VERSION.md` names the version and commit):
+Supertext calls go through the [Supertext SDK for PHP](https://github.com/Supertext/Supertext-API-SDK-and-Guide/tree/main/sdk/php) (namespace `Supertext\Sdk`), shared by all Supertext integrations and tested against the same spec vectors and stand-in. It isn't on Packagist yet, so it is vendored in `lib/supertext-sdk/` (`COMMIT` names the SDK commit, `README.md` where it comes from):
 
 - `registration.php` loads `lib/supertext-sdk/autoload.php`, so the SDK works for Composer and app/code installs alike; `./build.sh` puts `lib/` in the zip, `phpstan.neon` scans it without analysing it.
 - Reach it through `Api/Supertext.php` (`Supertext::client()`, `Config::client()`): it sets the base URL, the timeout and the `User-Agent`. Its built-in transport uses ext-curl, which Magento requires anyway; cURL honours `HTTPS_PROXY`.
-- Never edit the vendored files: fix the SDK upstream, then update with `tools/sync-supertext-sdk.sh <tag or commit>` and run the tests. Once the SDK is on Packagist, require `supertext/supertext-sdk` in `composer.json` instead (keeping the autoloader for app/code installs).
+- Never edit the vendored files: fix the SDK upstream, then update with `scripts/vendor-sdk.sh [commit-or-branch]` (default `main`; `SDK_DIR=/path/to/clone scripts/vendor-sdk.sh` uses a local clone as it is; it replaces the folder entirely) and run the tests. Once the SDK is on Packagist, require `supertext/supertext-sdk` in `composer.json` instead (keeping the autoloader for app/code installs).
 
 ### Language codes
 
