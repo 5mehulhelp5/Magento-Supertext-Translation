@@ -113,10 +113,4 @@ final class EntityTypes
 
         return array_values(array_unique(array_filter(array_map('intval', $ids), static fn (int $id): bool => $id > 0)));
     }
-
-    /** "de_CH" or "de-ch" → "de-CH" */
-    public static function formatTag(string $tag): string
-    {
-        return \Supertext\Sdk\LanguageCodes::normalize($tag);
-    }
 }

@@ -16,6 +16,7 @@ use Magento\Framework\Exception\LocalizedException;
 use Magento\Store\Model\StoreManagerInterface;
 use Supertext\Translation\Api\SupertextException;
 use Supertext\Translation\Model\Config;
+use Supertext\Translation\Model\Reporting;
 use Supertext\Translation\Model\Translation\EntityTypes;
 use Supertext\Translation\Model\Translation\Translator;
 use Symfony\Component\Console\Command\Command;
@@ -28,7 +29,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  * bin/magento supertext:translate product 1 2 --store=de_ch --store=fr_ch [--overwrite]
  *
  * Same translation as the admin. Without --store: every store view whose language differs
- * from the default locale.
+ * from the default locale (a store view without a Supertext language fails with its message).
  */
 class TranslateCommand extends Command
 {
@@ -37,6 +38,7 @@ class TranslateCommand extends Command
         private readonly Translator $translator,
         private readonly Config $config,
         private readonly StoreManagerInterface $storeManager,
+        private readonly Reporting $reporting,
     ) {
         parent::__construct();
     }
@@ -69,6 +71,9 @@ class TranslateCommand extends Command
 
         $output->writeln(sprintf('Supertext Translation %s', $this->config->version()));
 
+        // The automatic key check and version reports (a changed key, an update); never fails the command.
+        $this->reporting->onRequest();
+
         $stores = [];
 
         if ($input->getOption('store')) {
@@ -93,7 +98,7 @@ class TranslateCommand extends Command
 
         foreach (EntityTypes::ids($input->getArgument('ids')) as $id) {
             foreach ($stores as $storeId) {
-                $label = sprintf('%s %d → %s (%s)', $type, $id, $this->storeManager->getStore($storeId)->getCode(), $this->config->targetCode($storeId));
+                $label = sprintf('%s %d → %s (%s)', $type, $id, $this->storeManager->getStore($storeId)->getCode(), $this->config->targetCodeOrNull($storeId) ?? '–');
 
                 try {
                     $result = $this->translator->translate($type, $id, $storeId, (bool) $input->getOption('overwrite'));

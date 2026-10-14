@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!-- The public ping of the Supertext Commando Center: GET /supertext/ping?challenge=… (Controller/Ping/Index.php). -->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:App/etc/routes.xsd">
+    <router id="standard">
+        <route id="supertext" frontName="supertext">
+            <module name="Supertext_Translation"/>
+        </route>
+    </router>
+</config>

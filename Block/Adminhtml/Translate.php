@@ -55,7 +55,7 @@ class Translate extends Template
         return $this->_authorization->isAllowed(EntityTypes::get($this->getType())['acl']);
     }
 
-    /** @return list<array{id: int, name: string, code: string, website: string, locale: string, target: string, active: bool, sameLanguage: bool}> */
+    /** @return list<array{id: int, name: string, code: string, website: string, locale: string, setting: string, target: ?string, active: bool, sameLanguage: bool, tone: string, toneIgnored: bool}> */
     public function getStores(): array
     {
         return $this->config->storeViews();
@@ -109,6 +109,17 @@ class Translate extends Template
     public function getConfigUrl(): string
     {
         return $this->getUrl('adminhtml/system_config/edit', ['section' => 'supertext']);
+    }
+
+    /** Stores → Configuration → Supertext → Translation in a store view's scope (its Supertext language). */
+    public function getStoreConfigUrl(int $storeId): string
+    {
+        return $this->getUrl('adminhtml/system_config/edit', ['section' => 'supertext', 'store' => $storeId]);
+    }
+
+    public function canConfigure(): bool
+    {
+        return $this->_authorization->isAllowed('Supertext_Translation::config');
     }
 
     public function getStoresUrl(): string

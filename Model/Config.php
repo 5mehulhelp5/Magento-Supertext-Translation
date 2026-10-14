@@ -15,9 +15,11 @@ use Magento\Framework\Encryption\EncryptorInterface;
 use Magento\Framework\Module\PackageInfo;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
-use Supertext\Sdk\Client;
-use Supertext\Sdk\LanguageCodes;
+use Supertext\Sdk\V1\Client;
+use Supertext\Sdk\V1\Politeness;
+use Supertext\Translation\Api\LanguageCodes;
 use Supertext\Translation\Api\Supertext;
+use Supertext\Translation\Api\SupertextException;
 
 /**
  * The module's settings (Stores → Configuration → Supertext → Translation), with the
@@ -33,6 +35,7 @@ class Config
     public const PATH_CODE        = 'supertext/language/code';
     public const PATH_TONE        = 'supertext/language/tone';
     public const PATH_CMS_STATUS  = 'supertext/cms/status';
+    public const PATH_REPORTS     = 'supertext/api/version_reports';
 
     public const SIGNUP_URL  = Supertext::SIGNUP_URL;
     public const API_KEY_URL = Supertext::API_KEY_URL;
@@ -106,49 +109,115 @@ class Config
             : (string) $this->scopeConfig->getValue('general/locale/code', ScopeInterface::SCOPE_STORE, $storeId);
     }
 
-    /** Sent to Supertext as target language: the override, else the locale, always with a region ("de-CH"; a bare "de" → "de-DE"). */
-    public function targetCode(int $storeId): string
+    /** The store view's *Supertext language* setting ("" if none). */
+    public function languageSetting(int $storeId): string
     {
-        $override = (string) $this->scopeConfig->getValue(self::PATH_CODE, ScopeInterface::SCOPE_STORE, $storeId);
-
-        return LanguageCodes::target(trim($override) !== '' ? $override : $this->locale($storeId));
-    }
-
-    /** Source language: the default locale's language ("en_US" → "en"). */
-    public function sourceCode(): string
-    {
-        return LanguageCodes::source($this->locale(0));
-    }
-
-    public function tone(int $storeId): string
-    {
-        $tone = (string) $this->scopeConfig->getValue(self::PATH_TONE, ScopeInterface::SCOPE_STORE, $storeId);
-
-        return \in_array($tone, ['more', 'less'], true) ? $tone : 'default';
+        return trim((string) $this->scopeConfig->getValue(self::PATH_CODE, ScopeInterface::SCOPE_STORE, $storeId));
     }
 
     /**
-     * Store views that can be translated into, with their language.
+     * Sent to Supertext as target language: the store view's Supertext language, else its locale when
+     * that equals a Supertext code ("de_CH" → "de-CH"). No guessing, no default regions.
      *
-     * @return list<array{id: int, name: string, code: string, website: string, locale: string, target: string, active: bool, sameLanguage: bool}>
+     * @throws SupertextException unsupported_language (nothing is sent)
+     */
+    public function targetCode(int $storeId): string
+    {
+        return LanguageCodes::target($this->locale($storeId), $this->languageSetting($storeId));
+    }
+
+    /** The target code, or null when the store view has no Supertext language. */
+    public function targetCodeOrNull(int $storeId): ?string
+    {
+        return LanguageCodes::targetOrNull($this->locale($storeId), $this->languageSetting($storeId));
+    }
+
+    /**
+     * Source language: the default locale's language ("en_US" → "en"). One setting serves both
+     * directions: the default store view's Supertext language counts when it has the default locale.
+     *
+     * @throws SupertextException unsupported_language
+     */
+    public function sourceCode(): string
+    {
+        return LanguageCodes::source($this->locale(0), $this->sourceSetting());
+    }
+
+    public function sourceCodeOrNull(): ?string
+    {
+        return LanguageCodes::sourceOrNull($this->locale(0), $this->sourceSetting());
+    }
+
+    private function sourceSetting(): string
+    {
+        try {
+            $default = (int) $this->storeManager->getDefaultStoreView()?->getId();
+        } catch (\Throwable) {
+            return '';
+        }
+
+        return $default > 0 && strcasecmp($this->locale($default), $this->locale(0)) === 0 ? $this->languageSetting($default) : '';
+    }
+
+    /** The configured tone ("more", "less" or "default"), whether or not Supertext offers it for the store view. */
+    public function toneSetting(int $storeId): string
+    {
+        $tone = (string) $this->scopeConfig->getValue(self::PATH_TONE, ScopeInterface::SCOPE_STORE, $storeId);
+
+        return \in_array($tone, [Politeness::MORE, Politeness::LESS], true) ? $tone : Politeness::DEFAULT;
+    }
+
+    /**
+     * The tone sent to Supertext: formal/informal only where Supertext offers it for the target
+     * (Languages::supportsPoliteness()); otherwise "default", so nothing is sent.
+     */
+    public function tone(int $storeId): string
+    {
+        $tone   = $this->toneSetting($storeId);
+        $target = $this->targetCodeOrNull($storeId);
+
+        if ($tone === Politeness::DEFAULT || $target === null || LanguageCodes::supportsPoliteness($target) === false) {
+            return Politeness::DEFAULT;
+        }
+
+        return $tone;
+    }
+
+    /** The *Send version information to Supertext* setting (default on); SUPERTEXT_VERSION_REPORTS wins, see Api\Reporting::enabled(). */
+    public function versionReportsSetting(): bool
+    {
+        $value = $this->scopeConfig->getValue(self::PATH_REPORTS);
+
+        return $value === null || $value === '' || (bool) (int) $value;
+    }
+
+    /**
+     * Store views that can be translated into, with their language. `target` is null for a store
+     * view without a Supertext language (it can't be translated into).
+     *
+     * @return list<array{id: int, name: string, code: string, website: string, locale: string, setting: string, target: ?string, active: bool, sameLanguage: bool, tone: string, toneIgnored: bool}>
      */
     public function storeViews(): array
     {
-        $source = $this->sourceCode();
+        $source = $this->sourceCodeOrNull();
         $rows   = [];
 
         foreach ($this->storeManager->getStores(false) as $store) {
             $id     = (int) $store->getId();
-            $target = $this->targetCode($id);
+            $target = $this->targetCodeOrNull($id);
+            $tone   = $this->toneSetting($id);
             $rows[] = [
                 'id'           => $id,
                 'name'         => (string) $store->getName(),
                 'code'         => (string) $store->getCode(),
                 'website'      => (string) $this->storeManager->getWebsite($store->getWebsiteId())->getName(),
                 'locale'       => $this->locale($id),
+                'setting'      => $this->languageSetting($id),
                 'target'       => $target,
                 'active'       => (bool) $store->getIsActive(),
-                'sameLanguage' => LanguageCodes::source($target) === $source,
+                'sameLanguage' => $target !== null && $source !== null && LanguageCodes::sourceOrNull($target) === $source,
+                'tone'         => $tone,
+                'toneIgnored'  => $tone !== Politeness::DEFAULT && $target !== null && LanguageCodes::supportsPoliteness($target) === false,
             ];
         }
 

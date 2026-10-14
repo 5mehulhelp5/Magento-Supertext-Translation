@@ -10,11 +10,12 @@ declare(strict_types=1);
 
 namespace Supertext\Translation\Model\Translation;
 
-use Supertext\Sdk\Client;
-use Supertext\Sdk\SupertextException as SdkException;
+use Supertext\Sdk\V1\Client;
+use Supertext\Sdk\V1\SupertextException as SdkException;
 use Supertext\Translation\Api\Supertext;
 use Supertext\Translation\Api\SupertextException;
 use Supertext\Translation\Model\Config;
+use Supertext\Translation\Model\Reporting;
 
 /** One entry point for the translate page, its endpoint and the console command. */
 class Translator
@@ -25,6 +26,7 @@ class Translator
         private readonly Config $config,
         private readonly EavTranslator $eav,
         private readonly CmsTranslator $cms,
+        private readonly Reporting $reporting,
     ) {
     }
 
@@ -63,12 +65,20 @@ class Translator
             throw new SupertextException('Choose a store view to translate into.');
         }
 
+        // Both codes first: a store view without a Supertext language fails here, before anything is sent.
+        $target = $this->config->targetCode($storeId);
+        $source = $this->config->sourceCode();
+
         $this->client ??= $this->config->client();
 
         try {
             return $this->handler($type)->translate($this->client, $type, $id, $storeId, $overwrite);
         } catch (SdkException $e) {
-            throw Supertext::error($e, $this->config->sourceCode(), $this->config->targetCode($storeId));
+            if ($e->errorCode === SdkException::AUTHENTICATION_FAILURE) {
+                $this->reporting->authenticationFailed((int) ($e->status ?? 401));
+            }
+
+            throw Supertext::error($e, $source, $target);
         }
     }
 

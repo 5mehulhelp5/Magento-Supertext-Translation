@@ -22,7 +22,7 @@ The Supertext Magento demo (ask Supertext for the address and an admin login) ha
 
    ![Catalog → Products with the products Dark chocolate praline box and Milk chocolate bar with hazelnuts selected, and the Actions menu open with Translate with Supertext at the bottom](images/products-mass-action.png)
 
-3. The **Translate with Supertext** page lists the products with a column per store view showing how far each is translated already. Tick the store views to translate into: all store views in another language than the default values are ticked.
+3. The **Translate with Supertext** page lists the products with a column per store view showing how far each is translated already. Tick the store views to translate into: all store views in another language than the default values are ticked. A store view marked *No Supertext language yet* can't be ticked: your administrator hasn't chosen which Supertext language it is translated into (see the [installation guide](INSTALLATION.md#supertext-language-and-tone)).
 
    <img src="images/translate-page.png" alt="The Translate with Supertext page for two products: translate from the default values (All Store Views, en_US) into Deutsch (Schweiz) de-CH, Français (Suisse) fr-CH and Italiano (Svizzera) it-CH, all ticked, English not ticked; Overwrite existing translations is off; both products are Not translated in every store view" width="720">
 
@@ -91,5 +91,8 @@ The table shows the reason for each item and store view that fails; the other on
 | *Too many requests to Supertext* | Wait a moment and click **Translate** again. Items already done show *Already translated, unchanged*. |
 | *Your Supertext translation limit is exceeded* | Your Supertext plan's volume is used up; tell your administrator. |
 | *Timed out waiting for the Supertext translation* | Very long texts. Try again, or ask your administrator to raise the timeout. |
-| *Supertext does not translate from "…" into "…"* | Supertext doesn't support that store view's language code; ask your administrator to set its *Supertext language code* (e.g. `de-CH`). |
+| *The language "…" has no Supertext language yet* | Your administrator hasn't chosen the Supertext language for that store view (*Stores → Configuration → Supertext → Translation → Language*, in the store view's scope). Ask them to; the other store views are translated. |
+| *The source language "…" (the default locale) has no Supertext language yet* | Supertext doesn't know the language of the default values yet; ask your administrator to set it. |
+| *Supertext does not translate from "…" into "…"* | Supertext doesn't offer that store view's Supertext language; ask your administrator to choose another one. |
+| *Supertext offers no formal or informal tone for this language* | The tone set for this store view isn't available at Supertext. Ask your administrator to set it to *Supertext default*. |
 | *The Supertext translation came back incomplete* | Nothing was saved for that item and store view. Click **Translate** again. |

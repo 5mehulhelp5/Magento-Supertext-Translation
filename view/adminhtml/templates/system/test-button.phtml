@@ -16,7 +16,7 @@ $script = 'require(["jquery"], function ($) {
         var box = $("#supertext-test-result");
         $.ajax({ url: ' . json_encode($block->getTestUrl()) . ', method: "POST", dataType: "json", data: { form_key: window.FORM_KEY }, showLoader: true })
             .done(function (data) {
-                box.attr("class", "message " + (data.ok ? "message-success success" : "message-error error")).show().children("div").text(data.message);
+                box.attr("class", "message " + (data.ok ? "message-success success" : "message-error error")).show().children("div").html(data.html);
             })
             .fail(function () {
                 box.attr("class", "message message-error error").show().children("div").text(' . json_encode((string) __('The test could not be run.')) . ');

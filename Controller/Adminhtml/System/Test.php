@@ -15,17 +15,17 @@ use Magento\Backend\App\Action\Context;
 use Magento\Framework\App\Action\HttpPostActionInterface;
 use Magento\Framework\Controller\Result\Json;
 use Magento\Framework\Controller\ResultFactory;
-use Supertext\Sdk\SupertextException as SdkException;
-use Supertext\Translation\Api\Supertext;
-use Supertext\Translation\Api\SupertextException;
-use Supertext\Translation\Model\Config;
+use Supertext\Translation\Model\Reporting;
 
-/** "Test connection" in the configuration: a free call that checks the saved API key. */
+/**
+ * "Test connection" in the configuration: the automatic API key check (Supertext's free `features`
+ * call) on the saved key, stored like the other checks; reports a changed result.
+ */
 class Test extends Action implements HttpPostActionInterface
 {
     public const ADMIN_RESOURCE = 'Supertext_Translation::config';
 
-    public function __construct(Context $context, private readonly Config $config)
+    public function __construct(Context $context, private readonly Reporting $reporting)
     {
         parent::__construct($context);
     }
@@ -33,20 +33,17 @@ class Test extends Action implements HttpPostActionInterface
     public function execute()
     {
         /** @var Json $json */
-        $json = $this->resultFactory->create(ResultFactory::TYPE_JSON);
+        $json  = $this->resultFactory->create(ResultFactory::TYPE_JSON);
+        $check = $this->reporting->testConnection()?->check;
 
-        if ($this->config->apiKey() === '') {
-            return $json->setData(['ok' => false, 'message' => (string) __('No API key is saved yet. Save the configuration first.')]);
+        if ($check === null) {
+            $text = (string) __('The test could not be run.');
+
+            return $json->setData(['ok' => false, 'message' => $text, 'html' => htmlspecialchars($text, ENT_QUOTES)]);
         }
 
-        try {
-            $this->config->client()->validateApiKey();
-        } catch (SdkException $e) {
-            $e = Supertext::error($e);
+        $message = $this->reporting->describe($check);
 
-            return $json->setData(['ok' => false, 'message' => SupertextException::withDetail((string) __($e->template(), ...$e->parameters()), $e->detail())]);
-        }
-
-        return $json->setData(['ok' => true, 'message' => (string) __('Connected. The API key works.')]);
+        return $json->setData(['ok' => $message['ok'], 'message' => $message['text'], 'html' => $message['html']]);
     }
 }

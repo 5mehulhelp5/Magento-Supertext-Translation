@@ -12,6 +12,7 @@ parameters:
         - Console
         - Controller
         - Model
+        - Observer
         - registration.php
     # The vendored Supertext SDK: known to PHPStan, but checked in its own repository.
     scanDirectories:

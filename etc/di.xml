@@ -10,6 +10,7 @@
     <type name="Supertext\Translation\Console\Command\TranslateCommand">
         <arguments>
             <argument name="translator" xsi:type="object">Supertext\Translation\Model\Translation\Translator\Proxy</argument>
+            <argument name="reporting" xsi:type="object">Supertext\Translation\Model\Reporting\Proxy</argument>
         </arguments>
     </type>
     <type name="Magento\Config\Model\Config\TypePool">

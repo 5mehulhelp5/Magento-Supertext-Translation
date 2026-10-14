@@ -7,7 +7,8 @@ namespace Supertext\Translation\Test;
 /**
  * Finds the module's translatable phrases, like bin/magento i18n:collect-phrases: __() in PHP
  * and templates, labels and comments in system.xml, ACL titles, UI component labels, plus the
- * English messages of SupertextException, the SDK error messages and the content type labels.
+ * English messages of SupertextException, the SDK error messages, the API key check messages and the
+ * content type labels.
  */
 final class ModuleStrings
 {
@@ -38,8 +39,9 @@ final class ModuleStrings
                 array_push($strings, ...array_map('stripslashes', $matches[1]));
             }
 
-            // The messages for the SDK's error codes in Api/Supertext.php: ['template', parameters].
-            if (str_ends_with($file, 'Api/Supertext.php')) {
+            // The messages for the SDK's error codes in Api/Supertext.php and for the API key check in
+            // Model/Reporting.php: ['template', parameters].
+            if (str_ends_with($file, 'Api/Supertext.php') || str_ends_with($file, 'Model/Reporting.php')) {
                 preg_match_all('/\[\s*' . self::QUOTED . ',\s*(?:\$links|\[)/', $code, $matches);
                 array_push($strings, ...array_map('stripslashes', $matches[1]));
             }

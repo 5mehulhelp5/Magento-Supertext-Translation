@@ -27,7 +27,7 @@ use Magento\Framework\Indexer\IndexerRegistry;
 use Magento\Framework\Model\AbstractModel;
 use Magento\UrlRewrite\Model\UrlPersistInterface;
 use Psr\Log\LoggerInterface;
-use Supertext\Sdk\Client;
+use Supertext\Sdk\V1\Client;
 use Supertext\Translation\Api\SupertextException;
 use Supertext\Translation\Model\Config;
 
@@ -93,7 +93,7 @@ class EavTranslator
     /**
      * @return array{status: string, title: string, translated: list<string>, kept: list<string>, notes: list<string>, targetId?: int}
      *
-     * @throws SupertextException|\Supertext\Sdk\SupertextException on failure (Translator turns SDK errors into messages)
+     * @throws SupertextException|\Supertext\Sdk\V1\SupertextException on failure (Translator turns SDK errors into messages)
      */
     public function translate(Client $client, string $type, int $id, int $storeId, bool $overwrite): array
     {

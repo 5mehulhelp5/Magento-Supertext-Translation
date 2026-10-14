@@ -15,6 +15,7 @@ use Magento\Backend\App\Action\Context;
 use Magento\Framework\App\Action\HttpGetActionInterface;
 use Magento\Framework\Controller\ResultFactory;
 use Magento\Backend\Model\View\Result\Page;
+use Supertext\Translation\Model\Reporting;
 use Supertext\Translation\Model\Translation\EntityTypes;
 
 /** The "Translate with Supertext" page: ?type=product&ids=1,2 */
@@ -22,7 +23,7 @@ class Index extends Action implements HttpGetActionInterface
 {
     public const ADMIN_RESOURCE = 'Supertext_Translation::translate';
 
-    public function __construct(Context $context)
+    public function __construct(Context $context, private readonly Reporting $reporting)
     {
         parent::__construct($context);
     }
@@ -36,6 +37,9 @@ class Index extends Action implements HttpGetActionInterface
 
             return $this->resultFactory->create(ResultFactory::TYPE_REDIRECT)->setPath('admin/dashboard');
         }
+
+        // The automatic key check and version reports, after the response.
+        $this->reporting->onRequest();
 
         /** @var Page $page */
         $page = $this->resultFactory->create(ResultFactory::TYPE_PAGE);

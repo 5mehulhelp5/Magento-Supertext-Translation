@@ -21,7 +21,7 @@ use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\Model\AbstractModel;
 use Magento\Store\Model\StoreManagerInterface;
-use Supertext\Sdk\Client;
+use Supertext\Sdk\V1\Client;
 use Supertext\Translation\Api\SupertextException;
 use Supertext\Translation\Model\Config;
 
@@ -99,7 +99,7 @@ class CmsTranslator
     /**
      * @return array{status: string, title: string, translated: list<string>, kept: list<string>, notes: list<string>, targetId?: int}
      *
-     * @throws SupertextException|\Supertext\Sdk\SupertextException|LocalizedException on failure (Translator turns SDK errors into messages)
+     * @throws SupertextException|\Supertext\Sdk\V1\SupertextException|LocalizedException on failure (Translator turns SDK errors into messages)
      */
     public function translate(Client $client, string $type, int $id, int $storeId, bool $overwrite): array
     {

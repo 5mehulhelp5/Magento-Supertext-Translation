@@ -10,23 +10,23 @@ declare(strict_types=1);
 
 namespace Supertext\Translation\Api;
 
-use Supertext\Sdk\Client;
 use Supertext\Sdk\Http\HttpTransport;
-use Supertext\Sdk\Supertext as Sdk;
-use Supertext\Sdk\SupertextException as SdkException;
+use Supertext\Sdk\V1\Client;
+use Supertext\Sdk\V1\Protocol;
+use Supertext\Sdk\V1\SupertextException as SdkException;
 
 /**
  * The module's access to Supertext: the vendored Supertext SDK (lib/supertext-sdk,
  * https://github.com/Supertext/Supertext-API-SDK-and-Guide) with this module's defaults, and its
  * errors turned into messages the admin translates. The SDK handles the protocol: auth header,
- * multipart upload, language codes, HTTP 429 retries, polling, cleanup and packing texts into
+ * multipart upload, HTTP 429 retries, polling, cleanup and packing texts into
  * documents.
  *
  * No Magento dependencies.
  */
 final class Supertext
 {
-    public const LIVE = Sdk::LIVE_BASE_URL;
+    public const LIVE = Protocol::LIVE_BASE_URL;
     public const STAGING = 'https://api.staging.supertext.com/v1/';
     public const TESTING = 'https://api.testing.supertext.com/v1/';
 
@@ -87,6 +87,8 @@ final class Supertext
             SdkException::MISSING_API_KEY        => ['Supertext is not set up yet: an administrator needs to enter the API key in Stores → Configuration → Supertext → Translation. No Supertext account yet? Create one at %1. Generate your API key at %2 (requires the Admin role).', $links],
             SdkException::AUTHENTICATION_FAILURE => ['Authentication failed. Please check the Supertext API key. No Supertext account yet? Create one at %1. Generate your API key at %2 (requires the Admin role).', $links],
             SdkException::INVALID_LANGUAGE_PAIR  => self::languagePair($e, $source, $target),
+            SdkException::UNSUPPORTED_LANGUAGE   => self::unsupportedLanguage($e),
+            SdkException::UNSUPPORTED_FEATURE    => ['Supertext offers no formal or informal tone for this language. Set its tone to "Supertext default" under Stores → Configuration → Supertext → Translation → Language.', []],
             SdkException::NOT_FOUND              => ['The requested Supertext resource was not found.', []],
             SdkException::PAYLOAD_TOO_LARGE      => ['The content is too large for Supertext to translate in one go.', []],
             SdkException::TOO_MANY_REQUESTS      => ['Too many requests to Supertext. Please try again shortly.', []],
@@ -101,7 +103,7 @@ final class Supertext
             default                              => ['Supertext answered with HTTP %1.', [(string) ($e->status ?? 0)]],
         };
 
-        $detail = $e->errorCode === SdkException::INVALID_LANGUAGE_PAIR ? '' : (string) $e->detail;
+        $detail = \in_array($e->errorCode, [SdkException::INVALID_LANGUAGE_PAIR, SdkException::UNSUPPORTED_LANGUAGE, SdkException::UNSUPPORTED_FEATURE], true) ? '' : (string) $e->detail;
 
         return new SupertextException($message, $parameters, (int) $e->status, $e, $detail);
     }
@@ -114,11 +116,33 @@ final class Supertext
 
         if ($source !== '' && $target !== '') {
             return [
-                'Supertext does not translate from "%1" into "%2". Enter a Supertext language code with a region (e.g. de-CH) for this store view under Stores → Configuration → Supertext → Translation → Language.',
+                'Supertext does not translate from "%1" into "%2". Choose another Supertext language for this store view under Stores → Configuration → Supertext → Translation → Language (Scope: the store view).',
                 [$source, $target],
             ];
         }
 
-        return ['Supertext does not translate into this language. Enter a Supertext language code with a region (e.g. de-CH) for this store view under Stores → Configuration → Supertext → Translation → Language.', []];
+        return ['Supertext does not translate into this language. Choose another Supertext language for this store view under Stores → Configuration → Supertext → Translation → Language (Scope: the store view).', []];
+    }
+
+    /**
+     * No Supertext code for a locale (nothing was sent): names the locale and where to map it.
+     *
+     * @return array{string, list<string>}
+     */
+    private static function unsupportedLanguage(SdkException $e): array
+    {
+        $code = (string) ($e->targetLang ?? $e->sourceLang ?? '');
+
+        if ($e->targetLang === null && $e->sourceLang !== null) {
+            return [
+                'The source language "%1" (the default locale) has no Supertext language yet. An administrator can choose it under Stores → Configuration → Supertext → Translation → Language, with the default store view selected as Scope.',
+                [$code],
+            ];
+        }
+
+        return [
+            'The language "%1" has no Supertext language yet. An administrator can choose it under Stores → Configuration → Supertext → Translation → Language, with this store view selected as Scope.',
+            [$code],
+        ];
     }
 }

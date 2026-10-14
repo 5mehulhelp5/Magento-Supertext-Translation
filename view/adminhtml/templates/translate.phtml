@@ -65,15 +65,26 @@ $labels = [
                     <div class="admin__field-control supertext-stores">
                         <?php foreach ($stores as $store): ?>
                             <div class="admin__field-option">
+                                <?php $mapped = $store['target'] !== null ?>
                                 <input type="checkbox" class="admin__control-checkbox supertext-target" id="supertext-store-<?= (int) $store['id'] ?>"
-                                       value="<?= (int) $store['id'] ?>"<?= $store['sameLanguage'] ? '' : ' checked' ?>>
+                                       value="<?= (int) $store['id'] ?>"<?= $mapped ? ($store['sameLanguage'] ? '' : ' checked') : ' disabled' ?>>
                                 <label class="admin__field-label" for="supertext-store-<?= (int) $store['id'] ?>">
-                                    <?= $escaper->escapeHtml($store['name']) ?> <code><?= $escaper->escapeHtml($store['target']) ?></code>
+                                    <?= $escaper->escapeHtml($store['name']) ?>
+                                    <?php if ($mapped): ?>
+                                        <code><?= $escaper->escapeHtml((string) $store['target']) ?></code>
+                                    <?php else: ?>
+                                        <code><?= $escaper->escapeHtml($store['locale']) ?></code>
+                                        <span class="supertext-unmapped"><?= $escaper->escapeHtml(__('No Supertext language yet')) ?></span>
+                                        <?php if ($block->canConfigure()): ?>
+                                            <a href="<?= $escaper->escapeUrl($block->getStoreConfigUrl((int) $store['id'])) ?>"><?= $escaper->escapeHtml(__('Choose its Supertext language')) ?></a>
+                                        <?php endif ?>
+                                    <?php endif ?>
                                     <?php if (!$store['active']): ?><span class="supertext-badge"><?= $escaper->escapeHtml(__('Disabled')) ?></span><?php endif ?>
                                 </label>
                             </div>
                         <?php endforeach ?>
-                        <div class="admin__field-note"><?= $escaper->escapeHtml(__('Store views in the source language are not ticked.')) ?></div>
+                        <div class="admin__field-note"><?= $escaper->escapeHtml(__('Store views in the source language are not ticked.')) ?>
+                            <?= $escaper->escapeHtml(__('A store view without a Supertext language can\'t be translated into until an administrator chooses one.')) ?></div>
                     </div>
                 </div>
                 <div class="admin__field">
@@ -148,6 +159,7 @@ $labels = [
 .supertext-page .supertext-actions { display: flex; justify-content: space-between; margin-top: 2rem; }
 .supertext-page .supertext-muted { color: #6c868e; }
 .supertext-page .supertext-badge { background: #e3e3e3; padding: 0 0.6rem; font-size: 1.1rem; }
+.supertext-page .supertext-unmapped { color: #c0392b; font-weight: 600; }
 CSS, false) ?>
 
 <?php

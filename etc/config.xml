@@ -5,6 +5,7 @@
             <api>
                 <environment>live</environment>
                 <timeout>180</timeout>
+                <version_reports>1</version_reports>
             </api>
             <language>
                 <tone>default</tone>

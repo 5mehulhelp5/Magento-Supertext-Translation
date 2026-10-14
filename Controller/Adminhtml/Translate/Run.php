@@ -19,6 +19,7 @@ use Magento\Framework\Exception\LocalizedException;
 use Psr\Log\LoggerInterface;
 use Supertext\Translation\Api\SupertextException;
 use Supertext\Translation\Model\Config;
+use Supertext\Translation\Model\Reporting;
 use Supertext\Translation\Model\Translation\EntityTypes;
 use Supertext\Translation\Model\Translation\Translator;
 
@@ -32,6 +33,7 @@ class Run extends Action implements HttpPostActionInterface
         private readonly Translator $translator,
         private readonly Config $config,
         private readonly LoggerInterface $logger,
+        private readonly Reporting $reporting,
     ) {
         parent::__construct($context);
     }
@@ -53,6 +55,8 @@ class Run extends Action implements HttpPostActionInterface
         if (!$this->_authorization->isAllowed(EntityTypes::get($type)['acl'])) {
             return $json->setHttpResponseCode(403)->setData(['ok' => false, 'message' => (string) __('You are not allowed to edit this item.')]);
         }
+
+        $this->reporting->onRequest();
 
         if (\function_exists('set_time_limit')) {
             @set_time_limit($this->config->timeout() + 60);

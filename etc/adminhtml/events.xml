@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<!-- Commando Center: the API key check and version reports (see docs/DEVELOPER.md → Commando Center). -->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <event name="admin_system_config_changed_section_supertext">
+        <observer name="supertext_settings_saved" instance="Supertext\Translation\Observer\SettingsSaved"/>
+    </event>
+    <event name="controller_action_predispatch_adminhtml_system_config_edit">
+        <observer name="supertext_settings_page" instance="Supertext\Translation\Observer\SettingsPage"/>
+    </event>
+</config>

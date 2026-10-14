@@ -86,6 +86,8 @@ jobs:
       DEMO_EDITOR_PASSWORD: Ci-Editor-Chocolate-2026
       SUPERTEXT_API_KEY: Supertext-Auth-Key ci-key
       SUPERTEXT_API_ENDPOINT: http://127.0.0.1:8765/v1/
+      # Version reports go to the stand-in's fake Commando Center, never to the live one.
+      SUPERTEXT_REPORT_URL: http://127.0.0.1:8765/report
       COMPOSER_MEMORY_LIMIT: -1
     services:
       mysql:
@@ -171,5 +173,22 @@ jobs:
         run: |
           product=$(mysql -h127.0.0.1 -uroot -proot magento -N -e "SELECT entity_id FROM catalog_product_entity WHERE sku='ST-DEMO-PRALINES'" 2>/dev/null)
           php bin/magento supertext:translate product "$product" | grep -c skipped | grep -q 3
+      - name: Commando Center (version report to the stand-in, public ping)
+        working-directory: site
+        run: |
+          reports=$(curl -fsS http://127.0.0.1:8765/reports)
+          echo "$reports"
+          echo "$reports" | jq -e 'map(select(.event == "installed" and .plugin.name == "Magento-Supertext-Translation" and .api_key_check.status == "ok" and (.callback.url | endswith("/supertext/ping")))) | length == 1'
+          if grep -qF 'ci-key' <<< "$reports"; then echo "API key in a report" >&2; exit 1; fi
+          test "$(mysql -h127.0.0.1 -uroot -proot magento -N -e "SELECT COUNT(*) FROM flag WHERE flag_code='supertext_reporter'" 2>/dev/null)" = "1"
+          # The storefront through PHP's built-in server (Magento's phpserver/router.php).
+          php bin/magento config:set web/url/redirect_to_base 0
+          nohup php -S 127.0.0.1:8082 -t ./pub/ ./phpserver/router.php > ../phpserver.log 2>&1 &
+          sleep 3
+          ping=$(curl -sS -D ../headers.txt 'http://127.0.0.1:8082/supertext/ping?challenge=ci-challenge-0123456789')
+          echo "$ping"; cat ../headers.txt
+          test "$ping" = '{"ok":true,"plugin":"Magento-Supertext-Translation","challenge":"ci-challenge-0123456789"}'
+          grep -qi '^cache-control: no-store' ../headers.txt
+          test "$(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:8082/supertext/ping?challenge=bad')" = 400
       - if: failure()
-        run: cat standin.log; tail -50 site/var/log/*.log || true
+        run: cat standin.log; cat phpserver.log || true; tail -50 site/var/log/*.log || true

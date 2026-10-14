@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Supertext\Translation\Test\Unit;
 
 use PHPUnit\Framework\TestCase;
-use Supertext\Sdk\HtmlDocument;
+use Supertext\Sdk\V1\HtmlDocument;
 use Supertext\Translation\Model\Translation\FieldPlanner;
 
 final class FieldPlannerTest extends TestCase

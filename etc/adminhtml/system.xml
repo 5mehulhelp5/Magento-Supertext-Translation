@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!--
   Stores → Configuration → Supertext → Translation.
-  The API settings are global; the language code and tone can be set per store view.
+  The API settings are global; the Supertext language and the tone can be set per store view.
   Keep the settings table in docs/INSTALLATION.md in sync.
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
@@ -26,6 +26,10 @@
                     <backend_model>Supertext\Translation\Model\Config\Backend\ApiKey</backend_model>
                     <frontend_model>Supertext\Translation\Block\Adminhtml\System\Config\ApiKey</frontend_model>
                 </field>
+                <field id="key_check" translate="label" sortOrder="12" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>API key check</label>
+                    <frontend_model>Supertext\Translation\Block\Adminhtml\System\Config\KeyCheck</frontend_model>
+                </field>
                 <field id="test_connection" translate="label" sortOrder="15" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Test connection</label>
                     <frontend_model>Supertext\Translation\Block\Adminhtml\System\Config\TestButton</frontend_model>
@@ -44,18 +48,31 @@
                     <comment>Maximum wait for one translation (30–1800).</comment>
                     <validate>validate-digits validate-digits-range digits-range-30-1800</validate>
                 </field>
+                <field id="version_reports" translate="label comment" type="select" sortOrder="50" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Send version information to Supertext</label>
+                    <comment>Sends the shop's URL and the versions of this module, the shop software and the runtime to Supertext when you save these settings and after an update, so Supertext support can see which version you run. No content, no API key and no personal data are sent.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <frontend_model>Supertext\Translation\Block\Adminhtml\System\Config\VersionReports</frontend_model>
+                </field>
             </group>
 
             <group id="language" translate="label comment" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Language</label>
-                <comment><![CDATA[Supertext translates into each store view's language: its locale (<em>General → Locale Options → Locale</em>) unless you enter a different code here. Choose the store view in the <em>Scope</em> switcher at the top to set these per store view.]]></comment>
-                <field id="code" translate="label comment" type="text" sortOrder="10" showInDefault="0" showInWebsite="0" showInStore="1">
-                    <label>Supertext language code</label>
-                    <comment>Optional, e.g. fr-CH for Swiss French. Empty: the store view's locale (de_CH → de-CH).</comment>
+                <comment><![CDATA[Each store view needs a Supertext language. A store view whose locale (<em>General → Locale Options → Locale</em>) is one of Supertext's codes (de_CH → de-CH, fr_FR → fr-FR) uses it as it is; every other locale (es_ES, nl_NL, zh_Hans_CN, …) needs its Supertext language here. Supertext never guesses a region. Choose the store view in the <em>Scope</em> switcher at the top to set these per store view.]]></comment>
+                <field id="overview" translate="label" sortOrder="5" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Store views</label>
+                    <frontend_model>Supertext\Translation\Block\Adminhtml\System\Config\LanguageOverview</frontend_model>
+                </field>
+                <field id="code" translate="label comment" type="select" sortOrder="10" showInDefault="0" showInWebsite="0" showInStore="1">
+                    <label>Supertext language</label>
+                    <comment>Supertext's own codes. Empty: the store view's locale, if it equals one of them. Also used as the source language for the default store view (only the language counts: de-CH → de).</comment>
+                    <source_model>Supertext\Translation\Model\Config\Source\TargetLanguage</source_model>
+                    <frontend_model>Supertext\Translation\Block\Adminhtml\System\Config\LanguageSelect</frontend_model>
                     <backend_model>Supertext\Translation\Model\Config\Backend\LanguageCode</backend_model>
                 </field>
-                <field id="tone" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="tone" translate="label comment" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Tone</label>
+                    <comment>Formal and informal are only sent where Supertext offers them (not for English, Swiss German, Romansh, Albanian and Serbian; there the Supertext default is used).</comment>
                     <source_model>Supertext\Translation\Model\Config\Source\Tone</source_model>
                 </field>
             </group>

@@ -8,8 +8,8 @@ use PHPUnit\Framework\TestCase;
 use Supertext\Sdk\Http\HttpRequest;
 use Supertext\Sdk\Http\HttpResponse;
 use Supertext\Sdk\Http\HttpTransport;
-use Supertext\Sdk\Segment;
-use Supertext\Sdk\SupertextException as SdkException;
+use Supertext\Sdk\V1\Segment;
+use Supertext\Sdk\V1\SupertextException as SdkException;
 use Supertext\Translation\Api\Supertext;
 use Supertext\Translation\Api\SupertextException;
 
@@ -105,8 +105,38 @@ final class SupertextTest extends TestCase
         self::assertSame(['en', 'xx-XX'], Supertext::error(new SdkException(SdkException::INVALID_LANGUAGE_PAIR, 400), 'en', 'xx-XX')->parameters());
 
         $unknown = Supertext::error(new SdkException(SdkException::INVALID_LANGUAGE_PAIR, 400));
+        self::assertStringContainsString('Choose another Supertext language', $unknown->getMessage());
         self::assertSame([], $unknown->parameters());
         self::assertStringStartsWith('Supertext does not translate into this language.', $unknown->getMessage());
+    }
+
+    public function testUnsupportedLanguageAndFeature(): void
+    {
+        $target = Supertext::error(new SdkException(SdkException::UNSUPPORTED_LANGUAGE, targetLang: 'es_ES'));
+        self::assertSame(['es_ES'], $target->parameters());
+        self::assertStringContainsString('"es_ES" has no Supertext language yet', $target->getMessage());
+        self::assertSame('', $target->detail());
+
+        $source = Supertext::error(new SdkException(SdkException::UNSUPPORTED_LANGUAGE, sourceLang: 'xx_XX'));
+        self::assertStringStartsWith('The source language "xx_XX"', $source->getMessage());
+
+        $feature = Supertext::error(new SdkException(SdkException::UNSUPPORTED_FEATURE, 400, 'FEATURE_ERROR', 'FEATURE_ERROR', 'en', 'en-US', feature: 'politeness'));
+        self::assertStringStartsWith('Supertext offers no formal or informal tone for this language.', $feature->getMessage());
+    }
+
+    public function testCodesAreSentAsGiven(): void
+    {
+        $transport = $this->transport(static fn (HttpRequest $r): HttpResponse => match (true) {
+            $r->method === 'POST'                  => new HttpResponse(200, '{"file_id":"f1"}'),
+            str_ends_with($r->url, '/status')      => new HttpResponse(200, '{"status":"done"}'),
+            str_ends_with($r->url, '/translation') => new HttpResponse(200, '<div data-st-id="0">Hola</div>'),
+            default                                => new HttpResponse(204),
+        });
+
+        Supertext::client('k', 'https://api.test/v1', 60, '1.0.0', $transport, 0.0, static function (): void {
+        })->translateTexts(['t' => 'Hello'], 'es', 'en');
+
+        self::assertStringContainsString("name=\"target_lang\"\r\n\r\nes\r\n", (string) $this->requests[0]->body);
     }
 
     public function testEveryErrorCodeHasItsOwnMessage(): void

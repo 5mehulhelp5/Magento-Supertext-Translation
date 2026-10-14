@@ -10,7 +10,7 @@ declare(strict_types=1);
 
 namespace Supertext\Translation\Model\Translation;
 
-use Supertext\Sdk\Segment;
+use Supertext\Sdk\V1\Segment;
 
 /**
  * Decides which fields of one item go to Supertext and what is written back.
