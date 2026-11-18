@@ -182,7 +182,7 @@ bin/magento setup:install --base-url=http://127.0.0.1:8082/ --db-host=127.0.0.1 
   --admin-password=… --admin-email=… --admin-firstname=Local --admin-lastname=Admin --language=en_US --use-rewrites=1
 mkdir -p app/code/Supertext && cp -R /path/to/this/repo app/code/Supertext/Translation
 bin/magento module:enable Supertext_Translation && bin/magento setup:upgrade
-bin/magento module:disable Magento_TwoFactorAuth && bin/magento setup:upgrade      # local only
+bin/magento module:disable Magento_TwoFactorAuth MageOS_PasskeyAuth && bin/magento setup:upgrade      # local only (Mage-OS 3.x: Magento_TwoFactorAuth alone)
 DEMO_ADMIN_EMAIL=… DEMO_ADMIN_PASSWORD=… DEMO_EDITOR_EMAIL=… DEMO_EDITOR_PASSWORD=… php /path/to/this/repo/demo/setup.php "$PWD"
 PHP_CLI_SERVER_WORKERS=8 php -S 127.0.0.1:8082 -t pub/ phpserver/router.php
 ```
@@ -234,9 +234,9 @@ MAGENTO_URL=http://127.0.0.1:8081 DATABASE_URL=mysql://root:root@127.0.0.1:3306/
 
 ## Demo (Railway)
 
-`demo/` is a Mage-OS 3.6 shop with English sample content and store views for German (Switzerland), French (Switzerland) and Italian (Switzerland), plus this module. The Railway service *Magento* (project *supertext-cms-demos-php*) builds `demo/Dockerfile` with the repository root as context, from `main`. Railway no longer reads `railway.json`, so the Dockerfile path, healthcheck (`/health`, a static file) and restart policy are set on the service itself; `railway.json` documents the same values.
+`demo/` is a Mage-OS 4.0 shop with English sample content and store views for German (Switzerland), French (Switzerland) and Italian (Switzerland), plus this module. The Railway service *Magento* (project *supertext-cms-demos-php*) builds `demo/Dockerfile` with the repository root as context, from `main`. Railway no longer reads `railway.json`, so the Dockerfile path, healthcheck (`/health`, a static file) and restart policy are set on the service itself; `railway.json` documents the same values.
 
-The image downloads Mage-OS with Composer at build time (no keys needed), copies the module to `app/code`, enables all modules except `Magento_TwoFactorAuth` (demo convenience: Supertext staff log in with the `DEMO_*` accounts only) and runs Apache with `pub/` as document root. The container keeps **no files** between deploys:
+The image downloads Mage-OS with Composer at build time (no keys needed), copies the module to `app/code`, enables all modules except `Magento_TwoFactorAuth` and `MageOS_PasskeyAuth`, which depends on it (demo convenience: Supertext staff log in with the `DEMO_*` accounts only) and runs Apache with `pub/` as document root. The container keeps **no files** between deploys:
 
 - The shop is in MySQL: `DATABASE_URL` (`mysql://…`, the shared Railway MySQL 8.4 service, as root so the demo can create its database) and its own database `MAGENTO_DB_NAME` (default `magento`).
 - `app/etc/env.php` (database access and Magento's encryption key) is stored in that database (`supertext_demo_state`, `demo/state.php`) and restored on every start.
